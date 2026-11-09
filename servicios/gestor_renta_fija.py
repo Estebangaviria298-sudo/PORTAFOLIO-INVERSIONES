@@ -1,4 +1,3 @@
-
 from datetime import date
 
 from modelos.renta_fija import RentaFija
@@ -49,13 +48,12 @@ class GestorRentaFija:
     ):
 
         tipo = tipo.upper()
+        monto = float(monto)
 
         if tipo not in ["INTERES", "PAGO_CAPITAL"]:
             raise ValueError(
                 "El pago debe ser INTERES o PAGO_CAPITAL."
             )
-
-        monto = float(monto)
 
         if monto <= 0:
             raise ValueError("El monto debe ser mayor que cero.")
@@ -97,11 +95,16 @@ class GestorRentaFija:
             )
 
         if tipo == "INTERES":
-            intereses = self.calcular_intereses_pendientes(inversion)
+
+            intereses = self.calcular_intereses_pendientes(
+                inversion,
+                fecha
+            )
 
             if monto > intereses:
                 raise ValueError(
-                    "El pago supera los intereses pendientes."
+                    "El pago supera los intereses acumulados "
+                    "hasta la fecha seleccionada."
                 )
 
         self.base_datos.registrar_pago_renta_fija(
@@ -115,17 +118,29 @@ class GestorRentaFija:
 
         return "Pago registrado correctamente."
 
-    def calcular_intereses_pendientes(self, inversion):
+    def calcular_intereses_pendientes(
+        self,
+        inversion,
+        fecha_corte=None
+    ):
 
         fecha_inicio = RentaFija.convertir_fecha(
             inversion["fecha_inicio"]
         )
 
+        fecha_vencimiento = RentaFija.convertir_fecha(
+            inversion["fecha_vencimiento"]
+        )
+
+        if fecha_corte is None:
+            fecha_corte = date.today()
+
+        fecha_corte = RentaFija.convertir_fecha(fecha_corte)
+
         fecha_fin = min(
+            fecha_corte,
             date.today(),
-            RentaFija.convertir_fecha(
-                inversion["fecha_vencimiento"]
-            )
+            fecha_vencimiento
         )
 
         if fecha_fin <= fecha_inicio:
@@ -160,12 +175,14 @@ class GestorRentaFija:
                 )
 
             if pago["tipo"] == "INTERES":
+
                 intereses = max(
                     0.0,
                     intereses - float(pago["monto"])
                 )
 
             elif pago["tipo"] == "PAGO_CAPITAL":
+
                 saldo -= float(pago["monto"])
 
             fecha_anterior = fecha_pago
@@ -220,9 +237,11 @@ class GestorRentaFija:
         resultado = []
 
         for inversion in inversiones:
+
             resumen = self.obtener_resumen_inversion(
                 inversion["id"]
             )
+
             resultado.append(resumen)
 
         return resultado
