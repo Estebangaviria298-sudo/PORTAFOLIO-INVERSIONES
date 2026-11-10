@@ -10,7 +10,6 @@ from servicios.calculos import Calculos
 class ResumenPortafolio:
 
     def __init__(self):
-
         self.base_datos = BaseDatos()
         self.datos_mercado = DatosMercado()
         self.gestor_operaciones = GestorOperaciones()
@@ -51,19 +50,35 @@ class ResumenPortafolio:
         acciones = []
         errores = []
 
-        # Actualizar el valor de las acciones.
+        # CONSULTAR SIEMPRE COCA-COLA Y NIKE
 
-        for ticker, posicion in posiciones.items():
+        empresas = ["KO", "NKE"]
+
+        for ticker in empresas:
+
+            posicion = posiciones.get(
+                ticker,
+                {
+                    "cantidad": 0.0,
+                    "costo_total": 0.0,
+                    "ganancia_realizada": 0.0
+                }
+            )
 
             try:
+
                 datos = self.datos_mercado.obtener_datos_accion(ticker)
 
-                cantidad = posicion["cantidad"]
-                precio = datos["precio_actual"]
+                cantidad = float(posicion.get("cantidad", 0))
+                precio = float(datos["precio_actual"])
 
                 valor_actual = cantidad * precio
 
                 monedas["USD"]["valor_acciones"] += valor_actual
+
+                dividendo_por_accion = float(
+                    datos["dividendo_anual_por_accion"]
+                )
 
                 acciones.append({
                     "ticker": ticker,
@@ -71,31 +86,38 @@ class ResumenPortafolio:
                     "cantidad": cantidad,
                     "precio_actual": precio,
                     "valor_actual": valor_actual,
-                    "costo_total": posicion["costo_total"],
-                    "ganancia_realizada": posicion["ganancia_realizada"],
-                    "dividendo_anual_por_accion":
-                        datos["dividendo_anual_por_accion"],
-                    "dividendos_estimados":
-                        cantidad * datos["dividendo_anual_por_accion"],
+                    "costo_total": float(
+                        posicion.get("costo_total", 0)
+                    ),
+                    "ganancia_realizada": float(
+                        posicion.get("ganancia_realizada", 0)
+                    ),
+                    "dividendo_anual_por_accion": dividendo_por_accion,
+                    "dividendos_estimados": (
+                        cantidad * dividendo_por_accion
+                    ),
                     "moneda": "USD"
                 })
 
             except Exception as error:
+
                 errores.append(
                     f"No se pudo actualizar {ticker}: {error}"
                 )
 
-        # Agregar el valor de las inversiones de renta fija.
+        # CALCULAR VALOR DE RENTA FIJA
 
         for inversion in inversiones:
 
-            moneda = inversion["moneda"]
+            moneda = inversion.get("moneda", "COP")
 
-            monedas[moneda]["valor_renta_fija"] += (
-                inversion["valor_estimado"]
-            )
+            if moneda in monedas:
 
-        # Calcular el valor total por moneda.
+                monedas[moneda]["valor_renta_fija"] += float(
+                    inversion.get("valor_estimado", 0)
+                )
+
+        # CALCULAR TOTALES POR MONEDA
 
         for moneda in monedas:
 
@@ -104,18 +126,19 @@ class ResumenPortafolio:
                 + monedas[moneda]["valor_renta_fija"]
             )
 
-        # Construir los movimientos de dinero.
+        # CONSTRUIR FLUJOS DE DINERO
 
         flujos = {
             "USD": [],
             "COP": []
         }
 
-        # Compras y ventas de acciones.
-
         for operacion in operaciones:
 
             moneda = operacion.get("moneda", "USD")
+
+            if moneda not in flujos:
+                continue
 
             cantidad = float(operacion["cantidad"])
             precio = float(operacion["precio_unitario"])
@@ -124,9 +147,11 @@ class ResumenPortafolio:
             monto = cantidad * precio
 
             if operacion["tipo"] == "COMPRA":
+
                 monto = -(monto + comision)
 
             elif operacion["tipo"] == "VENTA":
+
                 monto = monto - comision
 
             flujos[moneda].append({
@@ -134,22 +159,28 @@ class ResumenPortafolio:
                 "monto": monto
             })
 
-        # Ingresos recibidos: dividendos, intereses y pagos de capital.
+        # AGREGAR DIVIDENDOS, INTERESES Y OTROS INGRESOS
 
         for ingreso in ingresos:
 
             moneda = ingreso.get("moneda", "COP")
+
+            if moneda not in flujos:
+                continue
 
             flujos[moneda].append({
                 "fecha": self.convertir_fecha(ingreso["fecha"]),
                 "monto": float(ingreso["monto"])
             })
 
-        # Registrar la inversión inicial de cada activo de renta fija.
+        # AGREGAR CAPITAL DE RENTA FIJA INVERTIDO
 
         for inversion in inversiones_fijas:
 
             moneda = inversion.get("moneda", "COP")
+
+            if moneda not in flujos:
+                continue
 
             flujos[moneda].append({
                 "fecha": self.convertir_fecha(
@@ -158,7 +189,7 @@ class ResumenPortafolio:
                 "monto": -float(inversion["capital"])
             })
 
-        # Calcular rentabilidad separada por moneda.
+        # CALCULAR RENTABILIDAD POR MONEDA
 
         rentabilidad = {}
 
@@ -169,12 +200,12 @@ class ResumenPortafolio:
                 monedas[moneda]["valor_total"]
             )
 
-        # Calcular dividendos estimados de las acciones.
+        # CALCULAR DIVIDENDOS ANUALES ESTIMADOS
 
-        dividendos_anuales = 0.0
-
-        for accion in acciones:
-            dividendos_anuales += accion["dividendos_estimados"]
+        dividendos_anuales = sum(
+            accion["dividendos_estimados"]
+            for accion in acciones
+        )
 
         return {
             "acciones": acciones,
