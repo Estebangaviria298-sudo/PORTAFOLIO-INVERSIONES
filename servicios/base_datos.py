@@ -1,3 +1,4 @@
+
 import sqlite3
 import os
 
@@ -267,6 +268,50 @@ class BaseDatos:
                 moneda,
                 inversion_id
             ))
+
+            conexion.commit()
+
+        except Exception:
+
+            conexion.rollback()
+            raise
+
+        finally:
+
+            conexion.close()
+
+    # REINICIAR TODOS LOS DATOS DEL PORTAFOLIO
+
+    def reiniciar_portafolio(self):
+
+        conexion = self.conectar()
+
+        try:
+
+            cursor = conexion.cursor()
+
+            # Primero se eliminan los pagos
+            cursor.execute("DELETE FROM pagos_renta_fija")
+
+            # Después se eliminan los ingresos y dividendos
+            cursor.execute("DELETE FROM ingresos")
+
+            # Se eliminan las compras y ventas
+            cursor.execute("DELETE FROM operaciones")
+
+            # Finalmente se eliminan las inversiones fijas
+            cursor.execute("DELETE FROM inversiones_fijas")
+
+            # Reiniciar los identificadores
+            cursor.execute("""
+                DELETE FROM sqlite_sequence
+                WHERE name IN (
+                    'operaciones',
+                    'ingresos',
+                    'inversiones_fijas',
+                    'pagos_renta_fija'
+                )
+            """)
 
             conexion.commit()
 

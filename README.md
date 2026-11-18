@@ -1,140 +1,88 @@
-# Seguimiento de Portafolio de Inversión
+# Seguimiento de portafolio COP/USD (renta variable + renta fija)
 
-## Descripción
-
-Sistema desarrollado en Python para registrar, administrar y analizar un portafolio de inversiones financieras. Permite realizar seguimiento a acciones, CDT, bonos y TES mediante un dashboard interactivo.
-
-El proyecto utiliza Yahoo Finance para consultar información del mercado bursátil y SQLite para almacenar las operaciones e inversiones registradas.
-
-## Objetivo
-
-Desarrollar una aplicación que permita administrar inversiones financieras, consultar su evolución, calcular su rentabilidad y generar proyecciones estimadas a un año.
-
-## Funcionalidades
-
-- Registro de compras y ventas de acciones.
-- Seguimiento de acciones de Coca-Cola (KO) y Nike (NKE).
-- Consulta de precios bursátiles mediante Yahoo Finance.
-- Estimación de dividendos anuales según la cantidad de acciones.
-- Registro de inversiones de renta fija: CDT, bonos y TES.
-- Registro de pagos de intereses y abonos a capital.
-- Cálculo de rentabilidad acumulada y rentabilidad efectiva anual.
-- Separación de los resultados en dólares (USD) y pesos colombianos (COP).
-- Gráficos de barras y distribución del portafolio.
-- Proyección estimada del valor de las inversiones a un año.
-
-## Tecnologías utilizadas
-
-- Python 3.13
-- Streamlit
-- SQLite
-- Pandas
-- Plotly
-- yfinance
-
-## Organización del proyecto
-
-```text
-PORTAFOLIO-INVERSIONES/
-│
-├── main.py
-├── requirements.txt
-├── README.md
-│
-├── modelos/
-│   ├── accion.py
-│   ├── renta_fija.py
-│   ├── operacion.py
-│   └── portafolio.py
-│
-├── servicios/
-│   ├── datos_mercado.py
-│   ├── calculos.py
-│   ├── base_datos.py
-│   ├── gestor_operaciones.py
-│   ├── gestor_renta_fija.py
-│   ├── gestor_dividendos.py
-│   ├── resumen_portafolio.py
-│   └── proyeccion.py
-│
-├── interfaz/
-│   └── dashboard.py
-│
-├── database/
-├── docs/
-└── tests/
-```
+App en Streamlit para registrar y simular un portafolio: inviertes en COP, compras acciones/ETF en USD
+(KO y NKE obligatorias), también CDT/bonos/TES en COP, y todo se mide en COP con la TRM.
+Calcula rentabilidad acumulada y **efectiva anual (E.A.)**, total invertido, valor actual y la
+distribución renta fija / renta variable / caja.
 
 ## Instalación
-
-1. Clonar el repositorio:
-
 ```bash
-git clone https://github.com/Estebangaviria298-sudo/PORTAFOLIO-INVERSIONES.git
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+streamlit run app.py
+python -m unittest discover -s tests                 # pruebas sin internet
 ```
 
-2. Entrar a la carpeta:
+## Cómo se usa
+**Registro de operaciones** (pestaña 1): eliges instrumento, tipo de operación, fecha y ticker, y escribes
+**tu** precio, TRM y comisión. Si dejas el precio o la TRM en 0 se usa el de mercado (yfinance); si dejas la
+comisión en 0 se usa el % global de la barra lateral. Tipos: Compra, Venta, Dividendo (fecha de pago,
+valor por acción en USD y TRM de ese día), Interés (monto en COP) y Pago de capital. Para CDT/Bono/TES
+escribes valor unitario, tasa E.A. y vencimiento (cada título con un nombre distinto).
+Puedes eliminar operaciones, exportar/importar CSV y cargar un ejemplo.
 
-```bash
-cd PORTAFOLIO-INVERSIONES
-```
+**Simulación por pesos / Excel** (pestaña 2): reparte el capital por ponderación o usa las operaciones y la
+tabla de dividendos (fecha ex y de pago) de tu Excel.
 
-3. Crear el entorno virtual:
-
-```bash
-python -m venv .venv
-```
-
-4. Activar el entorno virtual en Git Bash:
-
-```bash
-source .venv/Scripts/activate
-```
-
-5. Instalar las dependencias:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-## Ejecución
-
-Para iniciar la aplicación:
-
-```bash
-python -m streamlit run main.py
-```
-
-La aplicación abrirá el dashboard en el navegador.
-
-## Base de datos
-
-El sistema utiliza SQLite para almacenar las operaciones de compra y venta, las inversiones de renta fija, los dividendos y los pagos registrados.
-
-La base de datos se crea automáticamente cuando se ejecuta el sistema.
-
-## Cálculos financieros
-
-El sistema calcula la rentabilidad teniendo en cuenta los movimientos de dinero registrados, los costos de las operaciones, los ingresos y el valor actual de las inversiones.
-
-La rentabilidad efectiva anual se calcula mediante los flujos de caja y sus fechas.
-
-Las inversiones en USD y COP se presentan por separado para evitar sumar monedas diferentes.
-
-## Proyección
-
-La aplicación permite estimar el comportamiento del portafolio durante un año, teniendo en cuenta el comportamiento histórico de las acciones, los dividendos estimados y las tasas de las inversiones de renta fija.
-
-Las proyecciones son estimaciones y no representan una garantía de rentabilidad futura.
-
-## Autores
-
-Esteban Andres Gaviria Osorio
-
-## Repositorio
-
-[PORTAFOLIO-INVERSIONES en GitHub](https://github.com/Estebangaviria298-sudo/PORTAFOLIO-INVERSIONES)
+## Estructura
+| Archivo | Clase | Responsabilidad |
+|---|---|---|
+| `app.py` | – | Archivo principal: carga el Dashboard |
+| `portafolio/dashboard.py` | `Dashboard` | Interfaz Streamlit |
+| `portafolio/modelos.py` | `Activo`, `Parametros`, `Resultado` | Datos del dominio |
+| `portafolio/operacion.py` | `Operacion`, `LibroOperaciones` | Registro y validación de operaciones |
+| `portafolio/datos.py` | `ProveedorDatos` | yfinance: precios, dividendos (fecha ex), TRM histórica y TRM actual `COP=X` (caché diaria) |
+| `portafolio/importador.py` | `ImportadorExcel` | Lee operaciones y dividendos del Excel |
+| `portafolio/motor.py` | `MotorContable` | Fórmulas del Excel para un activo |
+| `portafolio/calculadora.py` | `CalculadoraRentabilidad` | Rentabilidad acumulada y E.A. (XIRR) |
+| `portafolio/portafolio.py` | `Portafolio` | Orquesta, renta fija, consolida, métricas |
+| `portafolio/graficos.py` | `Graficador` | Gráficos Plotly |
+| `tests/test_calculos.py` | – | Pruebas unitarias |
 
 ## Diagrama UML
+```mermaid
+classDiagram
+    class Activo { +str ticker; +float peso; +bool obligatorio; +str instrumento; +float tasa_ea; +int plazo_dias; +float comision_pct; +bool capitaliza; +es_renta_fija() bool; +tipo() str }
+    class Parametros { +float capital_cop; +date fecha_inicio; +date fecha_fin; +float comision_pct; +bool permitir_fracciones; +int rezago_pago_dias }
+    class Resultado { +dict libros; +DataFrame consolidado; +dict metricas; +Series pesos_finales; +Series distribucion_tipo; +DataFrame resumen_activos; +DataFrame detalle_operaciones; +DataFrame formato_excel }
+    class Operacion { +date fecha; +str tipo; +str ticker; +str instrumento; +float cantidad; +float precio; +float trm; +float comision; +float tasa_ea; +date vencimiento; +bool capitaliza; +date fecha_ex }
+    class LibroOperaciones { +agregar(op); +eliminar(i); +activos() list; +transacciones() DataFrame; +dividendos_manuales() dict }
+    class ProveedorDatos { +descargar_activo(ticker, inicio, fin) DataFrame; +descargar_trm(inicio, fin) Series; +trm_actual() dict }
+    class ImportadorExcel { +leer(archivo) tuple }
+    class MotorContable { +float comision_pct; +libro_activo(precio_usd, trm, operaciones, dividendos) DataFrame }
+    class CalculadoraRentabilidad { +rentabilidad_acumulada(base, ganancia) float; +anualizar(rent, dias) float; +tasa_efectiva_anual(flujos) float }
+    class Portafolio { +simular(transacciones) Resultado }
+    class Graficador { +dona_pesos(); +dona_tipo(); +evolucion_total(); +comparativa_activos(); +composicion(); +dividendos() }
+    class Dashboard { +ejecutar() }
+    LibroOperaciones o-- Operacion
+    Portafolio o-- Activo
+    Portafolio --> Parametros
+    Portafolio --> ProveedorDatos
+    Portafolio ..> MotorContable : crea uno por activo
+    Portafolio ..> CalculadoraRentabilidad : usa
+    Portafolio ..> Resultado : crea
+    Graficador ..> Resultado : usa
+    Dashboard --> LibroOperaciones
+    Dashboard --> Portafolio
+    Dashboard --> ImportadorExcel
+    Dashboard --> Graficador
+    LibroOperaciones ..> Activo : genera
+```
 
-![Diagrama UML del proyecto](docs/diagrama_uml.png)
+## Fórmulas (idénticas al Excel)
+- Acciones = Acciones_anterior + Compra − Venta
+- Valor COP = Valor USD × TRM del día
+- Dividendo COP = Dividendo USD × TRM del día de **pago**, sobre las acciones que se tenían en la fecha ex (o las indicadas a mano)
+- Comisión = % de corretaje (0,2 %) × Precio COP × (Compra + Venta), o el valor escrito
+- Saldo caja = Saldo_anterior − (Precio COP × Compra) + (Precio COP × Venta) + (Dividendo COP × Acciones) − Comisión
+- Renta fija: valor = valor de compra × (1 + E.A.)^(días/365), sin crecer después del vencimiento
+- Rentabilidad acumulada = Valor final / Capital − 1 · E.A. = TIR con fechas (XIRR) de los flujos
+
+## Git (rúbrica: varias ramas y varios commits)
+```bash
+git init && git add . && git commit -m "Estructura inicial del proyecto"
+git checkout -b feature/motor-contable   # commits: motor, pruebas
+git checkout -b feature/renta-fija main  # commits: renta fija, E.A.
+git checkout -b feature/dashboard main   # commits: operaciones manuales, gráficos
+git checkout main && git merge feature/motor-contable feature/renta-fija feature/dashboard
+```
